@@ -1,6 +1,7 @@
 const express = require("express");
 const client = require("./db")
 const bcrypt = require("bcrypt")
+const jwt = require("jsonwebtoken")
 
 const app = express()
 
@@ -46,6 +47,55 @@ app.post("/api/auth/register", async(req, res) => {
         console.error("Registration error: ", err.message);
 
         return res.status(500).json({message: "Internal server error"});
+    }
+})
+
+app.post("/api/auth/login", async(req, res) => {
+    try {
+        const {email, password} = req.body;
+        if(typeof email !== "string" || !email.trim() ||
+            typeof password !== "string" || !password.trim()) {
+                return res.status(400).json({"message": "Email and password are required"})
+            }
+
+        const result = await client.query(
+            "select id, name, email, password_hash from users where email = $1",
+            [email.trim().toLowerCase()]
+        );
+
+        if(result.rows.length === 0) {
+            return res.status(401).json({
+                message: "Invalid email or password"
+            });
+        }
+
+        const user = result.rows[0];
+
+        const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+
+        if(!isPasswordValid) {
+            return res.status(401).json({message: "Invalid email or password"});
+        }
+
+        const token = jwt.sign(
+            {id: user.id},
+            process.env.JWT_SECRET,
+            {expiresIn: "1h"}
+        );
+
+        return res.status(200).json({
+            message: "Login Successful",
+            token,
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email
+            }
+        });
+        
+    }catch(err) {
+        console.error("Login error:", err.message);
+        return res.status(500).json({"message": "Internal Server Error"});
     }
 })
 
