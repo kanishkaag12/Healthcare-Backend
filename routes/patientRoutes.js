@@ -97,4 +97,63 @@ router.get("/:id", verifyToken, async (req, res) => {
     }
 })
 
+router.put("/:id", verifyToken, async(req, res) => {
+    try {
+        const userId = req.user.id;
+        const patientId = Number(req.params.id);
+
+        const {name, age, gender, phone, address} = req.body;
+
+        if(!Number.isInteger(patientId) || patientId <= 0) {
+            return res.status(400).json({
+                message: "Invalid patient ID"
+            });
+        }
+
+        if(typeof name !== "string" || !name.trim()) {
+            return res.status(400).json({
+                message: "Patient name is required"
+            });
+        }
+
+        if(age !== undefined && age !== null && 
+            (!Number.isInteger(age) || age<0 || age > 100)
+        ) {
+            return res.status(400).json({
+                message: "Age must be a valid positive number"
+            });
+        }
+
+        const result = await client.query(
+            "update patients set name = $1, age = $2, gender = $3, phone = $4, address = $5 where id = $6 and created_by = $7 returning *",
+            [
+                name.trim(),
+                age ?? null,
+                gender ?? null,
+                phone ?? null,
+                address ?? null,
+                patientId,
+                userId
+            ]
+        );
+
+        if(result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Patient not found"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Patient updated successfully",
+            patient: result.rows[0]
+        });
+    }catch(err) {
+        console.error("Update patient error:", err.message);
+
+        return res.status(500).json({
+            message: "internal server error"
+        });
+    }
+})
+
 module.exports = router;
