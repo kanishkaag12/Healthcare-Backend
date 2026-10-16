@@ -107,4 +107,67 @@ router.get("/:id", verifyToken, async (req, res) => {
     }
 });
 
+
+router.put("/:id", verifyToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const doctorId = Number(req.params.id);
+
+        const { name, specialization, email, phone, experience } = req.body;
+        if (!Number.isInteger(doctorId) || doctorId <= 0) {
+            return res.status(400).json({
+                message: "Invalid doctor ID"
+            });
+        }
+        if (typeof name !== "string" || !name.trim() ||
+            typeof specialization !== "string" || !specialization.trim() ||
+            typeof email !== "string" || !email.trim()
+        ) {
+            return res.status(400).json({
+                message: "Doctor name, specialization and email are required"
+            });
+        }
+
+        if (experience !== undefined && experience !== null &&
+            (!Number.isInteger(experience) || experience < 0)
+        ) {
+            return res.status(400).json({
+                message: "Experience must be a non-negative integer"
+            });
+        }
+
+        const result = await client.query(
+            "update doctors set name = $1, specialization = $2, email = $3, phone = $4, experience = $5 where id = $6 and created_by = $7 returning *",
+            [
+                name.trim(),
+                specialization.trim(),
+                email.trim().toLowerCase(),
+                phone ?? null,
+                experience ?? null,
+                doctorId,
+                userId
+            ]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Doctor not found"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Doctor updated successfully",
+            doctor: result.rows[0]
+        });
+
+    } catch (err) {
+        console.error("Update doctor error:", err.message);
+
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+});
+
+
 module.exports = router;
