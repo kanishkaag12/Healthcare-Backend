@@ -63,6 +63,38 @@ router.get("/", verifyToken, async (req, res) => {
     }
 })
 
+router.get("/:id", verifyToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const patientId = Number(req.params.id);
 
+        if(!Number.isInteger(patientId) || patientId <= 0) {
+            return res.status(400).json({message: "Invalid patient id"});
+        }
+
+        const result = await client.query(
+            "select * from patients where id = $1 and created_by = $2",
+            [patientId, userId]
+        );
+
+        if(result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Patient not found"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Patient retrieved successfully",
+            patient: result.rows[0]
+        });
+
+    }catch(err) {
+        console.error("Get patient error:", err.message);
+
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+})
 
 module.exports = router;
