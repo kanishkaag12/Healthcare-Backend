@@ -142,4 +142,39 @@ router.get("/:patient_id", verifyToken, async (req, res) => {
     }
 });
 
+router.delete("/:id", verifyToken, async (req, res) => {
+    try {
+        const mappingId = Number(req.params.id);
+        const userId = req.user.id;
+
+        if (!Number.isInteger(mappingId) || mappingId <= 0) {
+            return res.status(400).json({
+                message: "Invalid mapping ID"
+            });
+        }
+        const result = await client.query(
+            "delete from patient_doctor_mappings where id = $1 AND created_by = $2 returning *",
+            [mappingId, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Mapping not found"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Doctor removed from patient successfully",
+            mapping: result.rows[0]
+        });
+
+    } catch (err) {
+        console.error("Delete mapping error:", err.message);
+
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+});
+
 module.exports = router;
