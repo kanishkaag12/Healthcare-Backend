@@ -54,4 +54,38 @@ router.post("/", verifyToken, async(req, res) => {
     }
 });
 
+router.get("/", verifyToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const result = await client.query(
+            `select
+                m.id AS mapping_id,
+                m.patient_id,
+                p.name AS patient_name,
+                m.doctor_id,
+                d.name AS doctor_name,
+                d.specialization,
+                m.created_at
+             from patient_doctor_mappings m
+             join patients p on p.id = m.patient_id
+             join doctors d on d.id = m.doctor_id
+             where m.created_by = $1
+             order by m.id DESC`,
+            [userId]
+        );
+
+        return res.status(200).json({
+            message: "Patient-doctor mappings retrieved successfully",
+            mappings: result.rows
+        });
+
+    }catch (err) {
+        console.error("Get mappings error:", err.message);
+
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+});
+
 module.exports = router;
