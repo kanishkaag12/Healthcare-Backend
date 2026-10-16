@@ -170,4 +170,41 @@ router.put("/:id", verifyToken, async (req, res) => {
 });
 
 
+router.delete("/:id", verifyToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const doctorId = Number(req.params.id);
+
+        if (!Number.isInteger(doctorId) || doctorId <= 0) {
+            return res.status(400).json({
+                message: "Invalid doctor ID"
+            });
+        }
+
+        const result = await client.query(
+            "delete from doctors where id = $1 and created_by = $2 returning *",
+            [doctorId, userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                message: "Doctor not found"
+            });
+        }
+
+        return res.status(200).json({
+            message: "Doctor deleted successfully",
+            doctor: result.rows[0]
+        });
+
+    } catch (err) {
+        console.error("Delete doctor error:", err.message);
+
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+});
+
+
 module.exports = router;
