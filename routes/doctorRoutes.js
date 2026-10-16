@@ -48,4 +48,27 @@ router.post("/", verifyToken, async(req, res) => {
     }
 })
 
+router.get("/", verifyToken, async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const result = await client.query(
+            "select * from doctors where created_by = $1 order by id desc",
+            [userId]
+        );
+
+        return res.status(200).json({
+            message: "Doctors retrieved successfully",
+            doctors: result.rows
+        });
+
+    }catch (err) {
+        console.error("Get doctors error:", err.message);
+
+        return res.status(500).json({
+            message: "Internal server error"
+        });
+    }
+});
+
 module.exports = router;
